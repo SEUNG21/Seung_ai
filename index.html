@@ -1,1 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School AI Project</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; align-items: center; height: 100vh; padding: 10px; }
+        .chat-container { width: 100%; max-width: 450px; height: 85vh; background: #1e1e1e; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden; border: 1px solid #333; }
+        .header { background: #007bff; padding: 15px; text-align: center; font-weight: bold; font-size: 1.2rem; color: white; }
+        .chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { padding: 10px 14px; border-radius: 12px; max-width: 80%; word-wrap: break-word; font-size: 0.95rem; line-height: 1.4; }
+        .user { background: #007bff; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .bot { background: #2a2a2a; color: #e0e0e0; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .input-area { display: flex; padding: 12px; background: #1a1a1a; border-top: 1px solid #333; gap: 8px; }
+        input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #444; background: #252525; color: white; font-size: 1rem; outline: none; }
+        input:focus { border-color: #007bff; }
+        button { background: #007bff; color: white; border: none; padding: 0 20px; border-radius: 25px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">🎓 School AI Chatbot Assistant</div>
+    <div class="chat-box" id="chatBox">
+        <div class="message bot">Hello! I am the project AI. Ask me anything!</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKey(event)">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    const API_KEY = "AQ.Ab8RN6KcC2VnjxaDbHk4h_9wH9KmOAEkZUzOn7HLmKdk40X25g"; 
+
+    function handleKey(event) {
+        if (event.key === "Enter") sendMessage();
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById("userInput");
+        const chatBox = document.getElementById("chatBox");
+        const text = input.value.trim();
+        
+        if (!text) return;
+
+        chatBox.innerHTML += `<div class="message user">${text}</div>`;
+        input.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        const loadingId = "loading-" + Date.now();
+        chatBox.innerHTML += `<div class="message bot" id="${loadingId}">Thinking...</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        try {
+            const response = await fetch(`https://googleapis.com{API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
+            });
+
+            const data = await response.json();
+            const reply = data.candidates[0].content.parts[0].text;
+            
+            document.getElementById(loadingId).innerText = reply;
+        } catch (error) {
+            document.getElementById(loadingId).innerText = "Error: Could not reach AI backend.";
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+
+</body>
+</html>
 
