@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seung Gemini AI Project</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; color: #1f1f1f; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        
+        .chat-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; background: #ffffff; }
+        
+        @media (min-width: 500px) {
+            .chat-container { max-width: 460px; height: 92vh; border-radius: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.08); border: 1px solid #e3e8f0; }
+            body { background: #f6f8fa; }
+        }
+
+        .header { background: #ffffff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f3f4; }
+        .header-title { font-weight: 600; font-size: 1.2rem; color: #1a73e8; letter-spacing: -0.3px; }
+        .google-login-btn { background: #1a73e8; color: white; border: none; padding: 8px 16px; border-radius: 24px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+        .google-login-btn:hover { background: #1557b0; }
+        
+        .chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background: #ffffff; }
+        .message { padding: 12px 16px; border-radius: 20px; max-width: 85%; word-wrap: break-word; font-size: 1rem; line-height: 1.5; animation: fadeIn 0.2s ease-out; }
+        .user { background: #e8f0fe; color: #1967d2; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .bot { background: #f1f3f4; color: #1f1f1f; align-self: flex-start; border-bottom-left-radius: 4px; }
+        
+        /* 📱 FIXED: Lifted up with extra bottom padding to clear mobile navigation bars */
+        .input-area { padding: 16px 16px 36px 16px; background: #ffffff; border-top: 1px solid #f1f3f4; }
+        .input-wrapper { display: flex; align-items: center; background: #f1f3f4; border-radius: 28px; padding: 6px 12px; }
+        
+        input { flex: 1; padding: 8px 10px; border: none; background: transparent; color: #1f1f1f; font-size: 1rem; outline: none; }
+        
+        .feature-btn { background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 4px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #5f6368; margin-right: 4px; transition: background 0.2s; }
+        .feature-btn:hover { background: #e8eaed; }
+        
+        .send-btn { background: #1a73e8; color: white; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; transition: background 0.2s; margin-left: 4px; }
+        .send-btn:hover { background: #1557b0; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">
+        <div class="header-title">✨ Seung Gemini 2.5</div>
+        <button class="google-login-btn" id="loginBtn" onclick="simLogin()">Google Sign In</button>
+    </div>
+    
+    <div class="chat-box" id="chatBox">
+        <div class="message bot">Hello! I am your clean, full-screen Gemini 2.5 web application. Test out my features or ask me a school question!</div>
+    </div>
+    
+    <div class="input-area">
+        <div class="input-wrapper">
+            <button class="feature-btn" onclick="triggerFeature('Camera/Image Access')">📷</button>
+            <button class="feature-btn" onclick="triggerFeature('Voice Recognition Input')">🎙️</button>
+            <input type="text" id="userInput" placeholder="Ask Gemini..." onkeypress="handleKey(event)">
+            <button class="send-btn" onclick="sendMessage()">➔</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function handleKey(event) {
+        if (event.key === "Enter") sendMessage();
+    }
+
+    function simLogin() {
+        const btn = document.getElementById("loginBtn");
+        btn.innerText = "✓ SEUNG21";
+        btn.style.background = "#34a853";
+        alert("Google Authentication Successful! Signed in as user: SEUNG21");
+    }
+
+    function triggerFeature(name) {
+        alert(name + " Initialization: Premium server connection required. Sandbox presentation lock active!");
+    }
+
+    function sendMessage() {
+        const input = document.getElementById("userInput");
+        const chatBox = document.getElementById("chatBox");
+        const text = input.value.trim();
+        
+        if (!text) return;
+
+        chatBox.innerHTML += `<div class="message user">${text}</div>`;
+        input.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        const loadingId = "load-" + Date.now();
+        setTimeout(() => {
+            chatBox.innerHTML += `<div class="message bot" id="${loadingId}">Thinking...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 300);
+
+        setTimeout(() => {
+            let reply = "I am processing your query using Gemini 2.5 Flash optimizations. Try asking me about math formulas, science facts, history, or the first Prime Minister of Nepal!";
+            const lower = text.toLowerCase();
+
+            if (lower.includes("hello") || lower.includes("hi") || lower.includes("yoo") || lower.includes("hlo")) {
+                reply = "Yoo! Welcome to Seung's computer science presentation. I am running live on GitHub Pages entirely from a mobile phone interface!";
+            } 
+            else if (lower.includes("nepal") && (lower.includes("prime minister") || lower.includes("pm") || lower.includes("minister"))) {
+                reply = "The first Prime Minister of Nepal was Bhimsen Thapa. He served from 1806 to 1837.";
+            } 
+            else if (lower.includes("science") || lower.includes("water") || lower.includes("sun")) {
+                reply = "Scientific Query Resolved: The chemical formula for water is H₂O. Light travels from the sun to the Earth in approximately 8 minutes and 20 seconds.";
+            }
+            else if (lower.includes("math") || lower.includes("calculate") || lower.includes("2+2")) {
+                reply = "Sure! Evaluating algebraic input sequence: 2 + 2 = 4. My built-in mathematical engine handles geometric and arithmetic functions instantly.";
+            } 
+            else if (lower.includes("code") || lower.includes("program") || lower.includes("html")) {
+                reply = "Code compilation request received. This responsive application is built with vanilla JavaScript on top of a semantic HTML5 block container.";
+            } 
+            else if (lower.includes("who made") || lower.includes("creator") || lower.includes("you")) {
+                reply = "I am a custom cloud application engineered and deployed onto GitHub Pages entirely by SEUNG21!";
+            }
+
+            document.getElementById(loadingId).innerText = reply;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
