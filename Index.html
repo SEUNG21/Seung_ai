@@ -245,6 +245,16 @@
             align-self: flex-start;
         }
 
+        .info-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-left: 4px solid #1976d2;
+            font-size: 0.9rem;
+            align-self: flex-start;
+        }
+
         @media (max-width: 480px) {
             .chat-container {
                 height: 100vh;
@@ -276,7 +286,7 @@
     <div class="chat-box" id="chatBox">
         <div class="message">
             <div class="msg bot-message">
-                👋 Hello! I'm Seung AI powered by Mistral. Ask me anything!
+                👋 Hello! I'm Seung AI powered by Google Gemini 2.0. Ask me anything!
             </div>
         </div>
     </div>
@@ -297,10 +307,34 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@google/generative-ai"></script>
 <script>
     const chatBox = document.getElementById('chatBox');
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
+
+    // Initialize Gemini - Using free tier (no authentication for browser)
+    const API_KEY = "AIzaSyBxu1ij8kQh_l9ZR2_1C9VzHg5tLNQwBjU";
+    const genAI = window.GoogleGenerativeAI || null;
+    let model = null;
+
+    // Initialize on page load
+    async function initializeGemini() {
+        try {
+            if (window.GoogleGenerativeAI) {
+                const googleGenAI = new window.GoogleGenerativeAI(API_KEY);
+                model = googleGenAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                console.log("✅ Gemini initialized successfully");
+            } else {
+                console.log("⚠️ GoogleGenerativeAI library loading...");
+            }
+        } catch (error) {
+            console.error("Error initializing Gemini:", error);
+        }
+    }
+
+    // Wait for library to load
+    setTimeout(initializeGemini, 1000);
 
     function handleKeyPress(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -361,41 +395,14 @@
         scrollToBottom();
 
         try {
-            // PRIMARY API: HuggingFace Mistral - Completely FREE, NO authentication needed
-            const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    inputs: text,
-                    parameters: {
-                        max_length: 500,
-                        temperature: 0.7
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('API failed with status ' + response.status);
+            // Use Google Gemini - Most stable free API
+            if (!model) {
+                throw new Error('Gemini model not initialized. Please refresh the page.');
             }
 
-            const data = await response.json();
-            
-            let reply = '';
-            if (Array.isArray(data) && data[0]) {
-                if (data[0].generated_text) {
-                    reply = data[0].generated_text.replace(text, '').trim();
-                } else if (data[0].summary_text) {
-                    reply = data[0].summary_text;
-                }
-            } else if (data.error) {
-                throw new Error(data.error);
-            }
-
-            if (!reply) {
-                throw new Error('No response generated');
-            }
+            const result = await model.generateContent(text);
+            const response = await result.response;
+            const reply = response.text();
 
             // Remove typing indicator
             const typingElem = document.getElementById('typingIndicator');
@@ -404,10 +411,10 @@
             }
 
             // Add bot response
-            chatBox.appendChild(createMessageElement(reply, false));
+            chatBox.appendChild(createMessageElement(reply || 'I could not generate a response.', false));
 
         } catch (error) {
-            console.error('Primary API Error:', error);
+            console.error('Gemini Error:', error);
             
             // Remove typing indicator
             const typingElem = document.getElementById('typingIndicator');
@@ -415,117 +422,15 @@
                 typingElem.parentElement.remove();
             }
 
-            // Try backup API
-            await useBackupAPI(text);
+            // Show error
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = '⚠️ ' + (error.message || 'Error connecting to AI. Please try again.');
+            chatBox.appendChild(errorDiv);
         } finally {
             sendBtn.disabled = false;
             userInput.focus();
             scrollToBottom();
-        }
-    }
-
-    // BACKUP API 1: DevsDoCode - Completely FREE, NO auth
-    async function useBackupAPI(text) {
-        try {
-            const response = await fetch('https://devsdocode-openai.hf.space/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'gpt-3.5-turbo',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: text
-                        }
-                    ],
-                    max_tokens: 1024,
-                    temperature: 0.7
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Backup API 1 failed');
-            }
-
-            const data = await response.json();
-            let reply = '';
-
-            if (data.choices && data.choices[0] && data.choices[0].message) {
-                reply = data.choices[0].message.content.trim();
-            } else {
-                throw new Error('Invalid response format');
-            }
-
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            chatBox.appendChild(createMessageElement(reply, false));
-            
-        } catch (error) {
-            console.error('Backup API 1 Error:', error);
-
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            // Try second backup
-            await useBackupAPI2(text);
-        }
-    }
-
-    // BACKUP API 2: Together AI - Completely FREE, NO auth
-    async function useBackupAPI2(text) {
-        try {
-            const response = await fetch('https://api.together.xyz/inference', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'togethercomputer/llama-2-7b-chat',
-                    prompt: text,
-                    max_tokens: 500,
-                    temperature: 0.7
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Backup API 2 failed');
-            }
-
-            const data = await response.json();
-            let reply = '';
-
-            if (data.output && data.output.choices) {
-                reply = data.output.choices[0].text.trim();
-            } else {
-                throw new Error('No response');
-            }
-
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            chatBox.appendChild(createMessageElement(reply, false));
-
-        } catch (error) {
-            console.error('Backup API 2 Error:', error);
-
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = '⚠️ All APIs temporarily unavailable. Please refresh and try again.';
-            chatBox.appendChild(errorDiv);
         }
     }
 
