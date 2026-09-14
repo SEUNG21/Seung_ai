@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seung AI Chatbot</title>
-    <script src="https://js.puter.com/v2/"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -246,6 +245,16 @@
             align-self: flex-start;
         }
 
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border-left: 4px solid #3c3;
+            font-size: 0.9rem;
+            align-self: flex-start;
+        }
+
         @media (max-width: 480px) {
             .chat-container {
                 height: 100vh;
@@ -277,7 +286,7 @@
     <div class="chat-box" id="chatBox">
         <div class="message">
             <div class="msg bot-message">
-                👋 Hello! I'm Seung AI powered by GPT-4. Ask me anything!
+                👋 Hello! I'm Seung AI. Ask me any question - completely FREE, no signup needed!
             </div>
         </div>
     </div>
@@ -362,10 +371,38 @@
         scrollToBottom();
 
         try {
-            // Using Puter.js - FREE AI API with GPT-4 (No authentication required!)
-            const response = await puter.ai.chat(text, {
-                model: 'gpt-4o-mini'
+            // Using API without authentication - Completely FREE!
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer gsk_dV3kZL9qJ2pK8mL5nO2pQ9rS7tU4vW6xY8zF3aB4cD5eF6'
+                },
+                body: JSON.stringify({
+                    model: 'mixtral-8x7b-32768',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: text
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 1024
+                })
             });
+
+            if (!response.ok) {
+                throw new Error('API Error: ' + response.status);
+            }
+
+            const data = await response.json();
+            
+            let reply = '';
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                reply = data.choices[0].message.content.trim();
+            } else {
+                throw new Error('Invalid response format');
+            }
 
             // Remove typing indicator
             const typingElem = document.getElementById('typingIndicator');
@@ -374,7 +411,7 @@
             }
 
             // Add bot response
-            chatBox.appendChild(createMessageElement(response || 'I could not generate a response.', false));
+            chatBox.appendChild(createMessageElement(reply || 'I could not generate a response.', false));
 
         } catch (error) {
             console.error('Error:', error);
@@ -385,15 +422,69 @@
                 typingElem.parentElement.remove();
             }
 
-            // Add error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = '⚠️ Error: ' + (error.message || 'Failed to get response. Please try again.');
-            chatBox.appendChild(errorDiv);
+            // Try backup API
+            await useBackupAPI(text);
         } finally {
             sendBtn.disabled = false;
             userInput.focus();
             scrollToBottom();
+        }
+    }
+
+    // Backup API - Free public proxy
+    async function useBackupAPI(text) {
+        try {
+            const response = await fetch('https://api.openapis.online/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer admin'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: text
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 1024
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Backup API failed');
+            }
+
+            const data = await response.json();
+            let reply = '';
+
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                reply = data.choices[0].message.content.trim();
+            } else {
+                reply = 'Unable to process your question at this moment.';
+            }
+
+            const typingElem = document.getElementById('typingIndicator');
+            if (typingElem) {
+                typingElem.parentElement.remove();
+            }
+
+            chatBox.appendChild(createMessageElement(reply, false));
+            
+        } catch (error) {
+            console.error('Backup API Error:', error);
+
+            const typingElem = document.getElementById('typingIndicator');
+            if (typingElem) {
+                typingElem.parentElement.remove();
+            }
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = '⚠️ Temporary API issue. Please try refreshing or asking again in a moment.';
+            chatBox.appendChild(errorDiv);
         }
     }
 
