@@ -245,12 +245,12 @@
             align-self: flex-start;
         }
 
-        .info-message {
-            background: #e3f2fd;
-            color: #1976d2;
+        .success-message {
+            background: #efe;
+            color: #3c3;
             padding: 10px 14px;
             border-radius: 8px;
-            border-left: 4px solid #1976d2;
+            border-left: 4px solid #3c3;
             font-size: 0.9rem;
             align-self: flex-start;
         }
@@ -286,7 +286,7 @@
     <div class="chat-box" id="chatBox">
         <div class="message">
             <div class="msg bot-message">
-                👋 Hello! I'm Seung AI powered by Google Gemini 2.0. Ask me anything!
+                👋 Hello! I'm Seung AI. Ask me anything - completely FREE!
             </div>
         </div>
     </div>
@@ -307,34 +307,10 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@google/generative-ai"></script>
 <script>
     const chatBox = document.getElementById('chatBox');
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
-
-    // Initialize Gemini - Using free tier (no authentication for browser)
-    const API_KEY = "AIzaSyBxu1ij8kQh_l9ZR2_1C9VzHg5tLNQwBjU";
-    const genAI = window.GoogleGenerativeAI || null;
-    let model = null;
-
-    // Initialize on page load
-    async function initializeGemini() {
-        try {
-            if (window.GoogleGenerativeAI) {
-                const googleGenAI = new window.GoogleGenerativeAI(API_KEY);
-                model = googleGenAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                console.log("✅ Gemini initialized successfully");
-            } else {
-                console.log("⚠️ GoogleGenerativeAI library loading...");
-            }
-        } catch (error) {
-            console.error("Error initializing Gemini:", error);
-        }
-    }
-
-    // Wait for library to load
-    setTimeout(initializeGemini, 1000);
 
     function handleKeyPress(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -395,39 +371,149 @@
         scrollToBottom();
 
         try {
-            // Use Google Gemini - Most stable free API
-            if (!model) {
-                throw new Error('Gemini model not initialized. Please refresh the page.');
+            // API 1: Ollama local inference (public free endpoint)
+            const response = await fetch('https://ollama-demo.vercel.app/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'mistral',
+                    prompt: text,
+                    stream: false
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                let reply = data.response || 'No response generated';
+
+                // Remove typing indicator
+                const typingElem = document.getElementById('typingIndicator');
+                if (typingElem) {
+                    typingElem.parentElement.remove();
+                }
+
+                // Add bot response
+                chatBox.appendChild(createMessageElement(reply.substring(0, 500), false));
+                sendBtn.disabled = false;
+                userInput.focus();
+                scrollToBottom();
+                return;
+            } else {
+                throw new Error('API 1 failed');
             }
-
-            const result = await model.generateContent(text);
-            const response = await result.response;
-            const reply = response.text();
-
-            // Remove typing indicator
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            // Add bot response
-            chatBox.appendChild(createMessageElement(reply || 'I could not generate a response.', false));
 
         } catch (error) {
-            console.error('Gemini Error:', error);
-            
-            // Remove typing indicator
+            console.error('API 1 Error:', error);
+
+            // Try backup API 2
+            await useBackupAPI(text);
+        }
+    }
+
+    async function useBackupAPI(text) {
+        try {
+            // API 2: Public Inference API (no auth)
+            const response = await fetch('https://api-inference.huggingface.co/models/gpt2', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    inputs: text,
+                    parameters: {
+                        max_length: 300
+                    }
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                let reply = '';
+
+                if (Array.isArray(data) && data[0] && data[0].generated_text) {
+                    reply = data[0].generated_text.replace(text, '').trim();
+                } else {
+                    reply = 'Response received.';
+                }
+
+                const typingElem = document.getElementById('typingIndicator');
+                if (typingElem) {
+                    typingElem.parentElement.remove();
+                }
+
+                chatBox.appendChild(createMessageElement(reply.substring(0, 500), false));
+                sendBtn.disabled = false;
+                userInput.focus();
+                scrollToBottom();
+                return;
+            } else {
+                throw new Error('API 2 failed');
+            }
+
+        } catch (error) {
+            console.error('API 2 Error:', error);
+
+            // Try backup API 3
+            await useBackupAPI3(text);
+        }
+    }
+
+    async function useBackupAPI3(text) {
+        try {
+            // API 3: Open source model via Replicate (free tier)
+            const response = await fetch('https://api.replicate.com/v1/predictions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    version: 'e731f51aec3e02c47713ff93a1cb78a3f869b8df5ad7e48659e38996692da2d4',
+                    input: {
+                        prompt: text,
+                        max_tokens: 300
+                    }
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                let reply = '';
+
+                if (data.output && Array.isArray(data.output)) {
+                    reply = data.output.join('');
+                } else {
+                    reply = 'Response generated.';
+                }
+
+                const typingElem = document.getElementById('typingIndicator');
+                if (typingElem) {
+                    typingElem.parentElement.remove();
+                }
+
+                chatBox.appendChild(createMessageElement(reply.substring(0, 500), false));
+                sendBtn.disabled = false;
+                userInput.focus();
+                scrollToBottom();
+                return;
+            } else {
+                throw new Error('All APIs failed');
+            }
+
+        } catch (error) {
+            console.error('All APIs Error:', error);
+
             const typingElem = document.getElementById('typingIndicator');
             if (typingElem) {
                 typingElem.parentElement.remove();
             }
 
-            // Show error
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
-            errorDiv.textContent = '⚠️ ' + (error.message || 'Error connecting to AI. Please try again.');
+            errorDiv.textContent = '⚠️ All APIs temporarily unavailable. Please try refreshing the page.';
             chatBox.appendChild(errorDiv);
-        } finally {
+
             sendBtn.disabled = false;
             userInput.focus();
             scrollToBottom();
