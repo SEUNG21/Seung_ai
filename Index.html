@@ -276,7 +276,7 @@
     <div class="chat-box" id="chatBox">
         <div class="message">
             <div class="msg bot-message">
-                👋 Hello! I'm Seung AI. Ask me anything - completely FREE with no API keys needed!
+                👋 Hello! I'm Seung AI powered by Mistral. Ask me anything!
             </div>
         </div>
     </div>
@@ -361,7 +361,72 @@
         scrollToBottom();
 
         try {
-            // API 1: DevsDoCode - Completely FREE, NO authentication needed
+            // PRIMARY API: HuggingFace Mistral - Completely FREE, NO authentication needed
+            const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    inputs: text,
+                    parameters: {
+                        max_length: 500,
+                        temperature: 0.7
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('API failed with status ' + response.status);
+            }
+
+            const data = await response.json();
+            
+            let reply = '';
+            if (Array.isArray(data) && data[0]) {
+                if (data[0].generated_text) {
+                    reply = data[0].generated_text.replace(text, '').trim();
+                } else if (data[0].summary_text) {
+                    reply = data[0].summary_text;
+                }
+            } else if (data.error) {
+                throw new Error(data.error);
+            }
+
+            if (!reply) {
+                throw new Error('No response generated');
+            }
+
+            // Remove typing indicator
+            const typingElem = document.getElementById('typingIndicator');
+            if (typingElem) {
+                typingElem.parentElement.remove();
+            }
+
+            // Add bot response
+            chatBox.appendChild(createMessageElement(reply, false));
+
+        } catch (error) {
+            console.error('Primary API Error:', error);
+            
+            // Remove typing indicator
+            const typingElem = document.getElementById('typingIndicator');
+            if (typingElem) {
+                typingElem.parentElement.remove();
+            }
+
+            // Try backup API
+            await useBackupAPI(text);
+        } finally {
+            sendBtn.disabled = false;
+            userInput.focus();
+            scrollToBottom();
+        }
+    }
+
+    // BACKUP API 1: DevsDoCode - Completely FREE, NO auth
+    async function useBackupAPI(text) {
+        try {
             const response = await fetch('https://devsdocode-openai.hf.space/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -381,98 +446,40 @@
             });
 
             if (!response.ok) {
-                throw new Error('API 1 failed');
+                throw new Error('Backup API 1 failed');
             }
 
             const data = await response.json();
-            
             let reply = '';
+
             if (data.choices && data.choices[0] && data.choices[0].message) {
                 reply = data.choices[0].message.content.trim();
             } else {
-                throw new Error('Invalid response');
+                throw new Error('Invalid response format');
             }
 
-            // Remove typing indicator
             const typingElem = document.getElementById('typingIndicator');
             if (typingElem) {
                 typingElem.parentElement.remove();
             }
 
-            // Add bot response
-            chatBox.appendChild(createMessageElement(reply || 'I could not generate a response.', false));
-
-        } catch (error) {
-            console.error('Error:', error);
+            chatBox.appendChild(createMessageElement(reply, false));
             
-            // Remove typing indicator
+        } catch (error) {
+            console.error('Backup API 1 Error:', error);
+
             const typingElem = document.getElementById('typingIndicator');
             if (typingElem) {
                 typingElem.parentElement.remove();
             }
 
-            // Try backup API
-            await useBackupAPI(text);
-        } finally {
-            sendBtn.disabled = false;
-            userInput.focus();
-            scrollToBottom();
+            // Try second backup
+            await useBackupAPI2(text);
         }
     }
 
-    // Backup API - Claude via Hugging Face (Completely FREE, NO auth)
-    async function useBackupAPI(text) {
-        try {
-            const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    inputs: text,
-                    parameters: {
-                        max_length: 500
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Backup API failed');
-            }
-
-            const data = await response.json();
-            let reply = '';
-
-            if (Array.isArray(data) && data[0]) {
-                if (data[0].generated_text) {
-                    reply = data[0].generated_text.replace(text, '').trim();
-                } else if (data[0].summary_text) {
-                    reply = data[0].summary_text;
-                }
-            }
-
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            chatBox.appendChild(createMessageElement(reply || 'Response received.', false));
-            
-        } catch (error) {
-            console.error('Backup API Error:', error);
-
-            const typingElem = document.getElementById('typingIndicator');
-            if (typingElem) {
-                typingElem.parentElement.remove();
-            }
-
-            // Try third backup API
-            await useThirdBackupAPI(text);
-        }
-    }
-
-    // Third Backup - Open source model (Completely FREE)
-    async function useThirdBackupAPI(text) {
+    // BACKUP API 2: Together AI - Completely FREE, NO auth
+    async function useBackupAPI2(text) {
         try {
             const response = await fetch('https://api.together.xyz/inference', {
                 method: 'POST',
@@ -488,7 +495,7 @@
             });
 
             if (!response.ok) {
-                throw new Error('All APIs failed');
+                throw new Error('Backup API 2 failed');
             }
 
             const data = await response.json();
@@ -496,6 +503,8 @@
 
             if (data.output && data.output.choices) {
                 reply = data.output.choices[0].text.trim();
+            } else {
+                throw new Error('No response');
             }
 
             const typingElem = document.getElementById('typingIndicator');
@@ -503,10 +512,10 @@
                 typingElem.parentElement.remove();
             }
 
-            chatBox.appendChild(createMessageElement(reply || 'Response generated.', false));
+            chatBox.appendChild(createMessageElement(reply, false));
 
         } catch (error) {
-            console.error('All APIs Error:', error);
+            console.error('Backup API 2 Error:', error);
 
             const typingElem = document.getElementById('typingIndicator');
             if (typingElem) {
@@ -515,7 +524,7 @@
 
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
-            errorDiv.textContent = '⚠️ APIs temporarily unavailable. Please refresh and try again.';
+            errorDiv.textContent = '⚠️ All APIs temporarily unavailable. Please refresh and try again.';
             chatBox.appendChild(errorDiv);
         }
     }
